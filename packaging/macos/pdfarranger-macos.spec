@@ -56,6 +56,18 @@ binaries += poppler_binaries
 datas += poppler_datas
 hiddenimports += poppler_hiddenimports
 
+# libhandy is optional for pdfarranger (it enables HdyHeaderBar and the theme
+# selection) and PyInstaller has no hook for it either, so collect the module
+# data when Homebrew provides it.
+handy = GiModuleInfo("Handy", "1")
+if handy.available:
+    handy_binaries, handy_datas, handy_hiddenimports = handy.collect_typelib_data()
+    binaries += handy_binaries
+    datas += handy_datas
+    hiddenimports += handy_hiddenimports
+else:
+    print("WARNING: libhandy not found - the theme selection will be disabled")
+
 
 def add_tree(src, dest):
     """Add a directory tree of data files to the bundle."""

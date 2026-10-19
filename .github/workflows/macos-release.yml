@@ -30,7 +30,7 @@ jobs:
 
       - name: Install Homebrew dependencies
         run: |
-          brew install pkgconf gtk+3 poppler gobject-introspection gettext adwaita-icon-theme librsvg
+          brew install pkgconf gtk+3 poppler gobject-introspection gettext adwaita-icon-theme librsvg libhandy
 
       - name: Set up Python
         uses: actions/setup-python@v7
