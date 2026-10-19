@@ -2,8 +2,8 @@
 
 ## Download a ready-to-use app
 
-Prebuilt `.dmg` and `.zip` (Apple Silicon, self-contained, no Homebrew/Nix
-needed) are published on the
+Prebuilt `.dmg` and `.zip` (Apple Silicon, macOS 15+, self-contained, no
+Homebrew/Nix needed) are published on the
 [releases page](https://github.com/LoLyeah/pdfarranger-dmg/releases) of this
 fork. Open the dmg, drag *PDF Arranger* to Applications, and right-click →
 *Open* the first time (the build is not notarized by Apple).

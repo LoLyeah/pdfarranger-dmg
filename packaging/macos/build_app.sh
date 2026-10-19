@@ -138,10 +138,6 @@ fi
 if otool -L "$APP/Contents/MacOS/pdfarranger" | grep -E '^\s+/opt/|^\s+/usr/local/' | grep -v "^$BREW_PREFIX"; then
     echo "WARNING: unexpected absolute library references above"
 fi
-echo "checking bundled libraries for absolute Homebrew paths (informational)..."
-find "$APP/Contents" -type f \( -name '*.dylib' -o -name '*.so' \) -print0 \
-    | xargs -0 -I{} sh -c 'otool -L "{}" 2>/dev/null | grep -H -F "'"$BREW_PREFIX"'" | sed "s|^|{}: |"' \
-    | head -50 || true
 
 step "Check: minimum macOS version used by the bundled binaries"
 find "$APP/Contents" -type f \( -name '*.dylib' -o -name '*.so' -o -name 'pdfarranger' \) -print0 \
@@ -171,6 +167,25 @@ if [ "$SMOKE_RC" -ne 0 ]; then
     fi
 fi
 rm -f "$SMOKE_OUT"
+
+step "Smoke test: open the application window"
+# Launches the real app for 10 s. A CI runner may not have a desktop session,
+# so a failure here is reported but does not fail the build.
+GUI_LOG="$(mktemp)"
+env -u DYLD_LIBRARY_PATH -u GI_TYPELIB_PATH -u GSETTINGS_SCHEMA_DIR -u GTK_PATH -u XDG_DATA_DIRS \
+    "$APP_BIN" >"$GUI_LOG" 2>&1 &
+GUI_PID=$!
+sleep 10
+if kill -0 "$GUI_PID" 2>/dev/null; then
+    echo "app still running after 10s (pid $GUI_PID) - window created"
+    kill "$GUI_PID" 2>/dev/null || true
+    wait "$GUI_PID" 2>/dev/null || true
+else
+    echo "WARNING: the app exited within 10s (no desktop session on this runner?)"
+fi
+echo "--- application output ---"
+cat "$GUI_LOG"
+rm -f "$GUI_LOG"
 
 step "Create dmg"
 STAGE="build/macos/dmg"

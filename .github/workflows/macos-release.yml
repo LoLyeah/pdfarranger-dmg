@@ -37,6 +37,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Read application version
+        id: version
+        run: |
+          version=$(sed -n "s/^VERSION = '\(.*\)'/\1/p" pdfarranger/pdfarranger.py)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Build .app, .dmg and .zip
         run: bash packaging/macos/build_app.sh
 
@@ -53,17 +59,18 @@ jobs:
         with:
           files: release/*
           body: |
-            **Unofficial macOS build** of PDF Arranger ${{ github.ref_name }} (Apple Silicon / arm64).
+            **Unofficial macOS build** of PDF Arranger ${{ steps.version.outputs.version }} (Apple Silicon / arm64).
 
-            The app bundles its own GTK3 runtime — nothing else to install.
+            The app bundles its own GTK3 runtime — no Homebrew, no Nix, nothing else to install.
 
             ### Install
-            1. Download `pdfarranger-${{ github.ref_name }}-macos-arm64.dmg` below (or the `.zip` if you prefer).
+            1. Download `pdfarranger-${{ steps.version.outputs.version }}-macos-arm64.dmg` below (or the `.zip` if you prefer).
             2. Open the dmg and drag **PDF Arranger** onto **Applications**.
             3. First start: **right-click the app → Open → Open**. The build is not notarized by Apple, so
-               this one-time step is needed (a plain double-click would show "Apple cannot check it for malware").
+               this one-time step is required (a plain double-click shows "Apple cannot check it for malware").
 
             ### Notes
-            - Built by GitHub Actions from this repository; `SHA256SUMS` is attached for verification.
+            - Requires macOS 15 (Sequoia) or newer on Apple Silicon.
             - Intel Macs are not supported by this build.
-            - To rebuild/update: bump the version in `pdfarranger/pdfarranger.py`, tag `vX.Y.Z`, push.
+            - Built by GitHub Actions from this repository; `SHA256SUMS` is attached for verification.
+            - Update: bump `VERSION` in `pdfarranger/pdfarranger.py`, tag `vX.Y.Z`, push.

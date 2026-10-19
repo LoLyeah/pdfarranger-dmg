@@ -44,6 +44,13 @@ bash packaging/macos/build_app.sh          # needs python3; pip installs the res
 Artifacts land in `release/`: `pdfarranger-<version>-macos-<arch>.dmg`, `.zip`
 and `SHA256SUMS`.
 
+## Platform requirement
+
+The build runs on `macos-15` (arm64). pikepdf's macOS wheels are built for
+macOS 15, so the resulting app requires **macOS 15 (Sequoia) or newer** on
+Apple Silicon. Intel Macs are not covered (pikepdf has no x86_64 macOS wheels
+for current versions).
+
 ## Not signed / not notarized
 
 The app is ad-hoc signed (`codesign -s -`), which is the minimum for Apple
