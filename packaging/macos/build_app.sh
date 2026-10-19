@@ -28,6 +28,12 @@ ARCH="${ARCH:-$(uname -m)}"
 SMOKE_STRICT="${SMOKE_STRICT:-1}"
 PYTHON="${PYTHON:-python3}"
 
+# PyInstaller resolves the libraries of every GIRepository module (Gtk, Poppler,
+# ...) in a child process; without these the Homebrew libraries are not found
+# and the modules end up without their shared libraries inside the bundle.
+export DYLD_LIBRARY_PATH="$BREW_PREFIX/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+export GI_TYPELIB_PATH="$BREW_PREFIX/lib/girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
+
 APP_NAME="PDF Arranger"
 BUNDLE_ID="com.github.jeromerobert.pdfarranger"
 APP="dist/${APP_NAME}.app"
@@ -114,6 +120,9 @@ if [ -d "$APP/Contents/Frameworks/share/locale" ]; then
     ditto "$APP/Contents/Frameworks/share/locale" "$APP/Contents/MacOS/share/locale"
 fi
 ls -la "$APP/Contents/MacOS/share/"
+
+step "Verify bundle layout and library references"
+"$PYTHON" packaging/macos/verify_bundle.py "$APP"
 
 step "Checks: no leftover Homebrew references in the main binary"
 if otool -L "$APP/Contents/MacOS/pdfarranger" | grep -F "$BREW_PREFIX"; then
