@@ -81,5 +81,6 @@ jobs:
             ### Notes
             - Requires macOS 15 (Sequoia) or newer on Apple Silicon.
             - Intel Macs are not supported by this build.
+            - Bundles its GTK3/libhandy runtime; includes the fork's macOS fixes (safe drag & drop, GSettings schemas, theme support).
             - Built by GitHub Actions from this repository; `SHA256SUMS` is attached for verification.
             - Update: bump `VERSION` in `pdfarranger/pdfarranger.py`, tag `vX.Y.Z`, push.
