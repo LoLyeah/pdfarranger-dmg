@@ -108,24 +108,18 @@ test -d "$APP" || { echo "ERROR: $APP was not created"; exit 1; }
 rm -rf dist/pdfarranger   # plain COLLECT dir, only the .app is shipped
 
 step "Post-process the bundle"
-# pdfarranger looks for its data relative to the executable:
+# pdfarranger resolves its data relative to the executable:
 #   <exe dir>/share/pdfarranger/*.ui  and  <exe dir>/share/locale/
-# PyInstaller puts data files into Contents/Frameworks, so copy the two
-# directories where the application expects them.
-mkdir -p "$APP/Contents/MacOS/share"
-if [ -d "$APP/Contents/Frameworks/share/pdfarranger" ]; then
-    ditto "$APP/Contents/Frameworks/share/pdfarranger" "$APP/Contents/MacOS/share/pdfarranger"
+# PyInstaller keeps that data in Contents/Resources, so link it next to the
+# executable. A symlink (instead of a copy) keeps data files out of
+# Contents/MacOS, where an app bundle is supposed to contain code only - data
+# files there make codesign --verify --deep --strict fail.
+if [ ! -d "$APP/Contents/Resources/share" ]; then
+    echo "ERROR: $APP/Contents/Resources/share not found"
+    exit 1
 fi
-if [ -d "$APP/Contents/Frameworks/share/locale" ]; then
-    ditto "$APP/Contents/Frameworks/share/locale" "$APP/Contents/MacOS/share/locale"
-fi
-ls -la "$APP/Contents/MacOS/share/"
-
-# pdfarranger loads libintl through ctypes by its bare file name on macOS;
-# a link next to the executable puts it on the loader's search path.
-if [ -f "$APP/Contents/Frameworks/libintl.8.dylib" ]; then
-    ln -sf ../Frameworks/libintl.8.dylib "$APP/Contents/MacOS/libintl.8.dylib"
-fi
+ln -sfn ../Resources/share "$APP/Contents/MacOS/share"
+ls -la "$APP/Contents/MacOS/"
 
 step "Verify bundle layout and library references"
 "$PYTHON" packaging/macos/verify_bundle.py "$APP"

@@ -88,6 +88,13 @@ def main() -> int:
     if not list((app / "Contents/MacOS/share/locale").glob("*/LC_MESSAGES/pdfarranger.mo")):
         problems.append("missing translations in Contents/MacOS/share/locale")
 
+    # Contents/MacOS must contain code only (data files there break
+    # codesign --verify --deep --strict).
+    for entry in (app / "Contents" / "MacOS").iterdir():
+        if entry.is_symlink() or entry.name == "pdfarranger":
+            continue
+        problems.append(f"unexpected file in Contents/MacOS: {entry.name}")
+
     for typelib in (app / "Contents/Frameworks/gi_typelibs").glob("*.typelib"):
         data = typelib.read_bytes()
         match = re.search(rb"(/opt/homebrew[^\x00]*|/usr/local/Cellar[^\x00]*)", data)
