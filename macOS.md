@@ -1,5 +1,16 @@
 # PDF Arranger on macOS
 
+## Download a ready-to-use app
+
+Prebuilt `.dmg` and `.zip` (Apple Silicon, self-contained, no Homebrew/Nix
+needed) are published on the
+[releases page](https://github.com/LoLyeah/pdfarranger-dmg/releases) of this
+fork. Open the dmg, drag *PDF Arranger* to Applications, and right-click →
+*Open* the first time (the build is not notarized by Apple).
+
+The build is done by GitHub Actions — see
+[packaging/macos](packaging/macos) for how it works.
+
 ## Run with Nix  
 
 To use pdfarranger on macOS, is suggested to use [Nix](https://nixos.org/), which already provides [pdfarranger package](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/pd/pdfarranger/package.nix). 
