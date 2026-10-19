@@ -2262,6 +2262,22 @@ class PdfArranger(Gtk.Application):
 
         model = iconview.get_model()
         data = selection_data.get_data()
+        target = selection_data.get_target()
+        try:
+            target_name = target.name() if target is not None else None
+        except (TypeError, AttributeError):
+            target_name = None
+        if not data and target_name is None and self.drag_path is not None:
+            # Workaround for macOS, see
+            # https://github.com/pdfarranger/pdfarranger/issues/1334
+            # GTK's quartz drag & drop can lose the target and the data of an
+            # internal drag (Gdk-CRITICAL: gdk_atom_intern: assertion
+            # 'atom_name != NULL' failed). The pages that were dragged are still
+            # the iconview selection, so use it for the move.
+            selection = iconview.get_selected_items()
+            if selection:
+                data = '\n;\n'.join(str(p.get_indices()[0]) for p in selection).encode()
+                target_name = 'MODEL_ROW_INTERN'
         if not data:
             return
         load_password = (len(self.pdfqueue) == 0) and self.password is None
@@ -2274,7 +2290,7 @@ class PdfArranger(Gtk.Application):
             before = self.drag_pos == Gtk.IconViewDropPosition.DROP_LEFT
         else:
             before = self.drag_pos == Gtk.IconViewDropPosition.DROP_RIGHT
-        target = selection_data.get_target().name()
+        target = target_name
         if target == 'MODEL_ROW_INTERN':
             move = context.get_selected_action() & Gdk.DragAction.MOVE
             if move and ref_to and self._is_noop_move(data, ref_to, before):
@@ -2317,6 +2333,17 @@ class PdfArranger(Gtk.Application):
             # Workaround for windows
             # On Windows this method is in some situations triggered even for drag & drop
             # within the same pdfarranger instance
+            return
+        if self.target_is_intern and platform.system() == 'Darwin':
+            # Workaround for macOS, see
+            # https://github.com/pdfarranger/pdfarranger/issues/1334
+            # GTK's quartz drag & drop regularly fails to transfer the data of
+            # the custom drag targets (visible as
+            # "Gdk-CRITICAL: gdk_atom_intern: assertion 'atom_name != NULL' failed")
+            # and this method then deletes the dragged pages even though they
+            # were never inserted anywhere. Internal moves remove their source
+            # pages in iv_dnd_received_data, so refusing to delete here can only
+            # avoid data loss.
             return
         selection = self.iconview.get_selected_items()
         self.undomanager.commit("Move")
