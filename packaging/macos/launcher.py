@@ -13,6 +13,41 @@ import os
 import sys
 
 
+def _simulate_internal_drop(app):
+    """Feed a drop without target and data to the drop handler.
+
+    Reproduces the macOS failure mode of issue #1334: the drag ends without
+    its target atom and without data. Used by the CI smoke test to check the
+    fallback that moves the dragged (selected) pages anyway.
+    """
+    from gi.repository import Gdk, Gtk
+
+    model = app.model
+    if model is None or len(model) < 2:
+        print("DIAG selftest: skipped, fewer than 2 pages", flush=True)
+        return
+
+    def order():
+        return [row[0].description.replace("\n", " ") for row in model]
+
+    before = order()
+    app.iconview.select_path(Gtk.TreePath.new_from_indices([0]))
+    app.drag_path = Gtk.TreePath.new_from_indices([len(model) - 1])
+    app.drag_pos = Gtk.IconViewDropPosition.DROP_RIGHT
+
+    class _Context:
+        @staticmethod
+        def get_selected_action():
+            return Gdk.DragAction.MOVE
+
+    try:
+        app.iv_dnd_received_data(app.iconview, _Context(), 0, 0, Gtk.SelectionData(), 0, 0)
+    except Exception as exc:  # a crash here is what we are testing for
+        print(f"DIAG selftest: ERROR {exc!r}", flush=True)
+    print(f"DIAG selftest before={before}", flush=True)
+    print(f"DIAG selftest after ={order()}", flush=True)
+
+
 def _enable_diagnostics(app):
     import faulthandler
 
@@ -55,6 +90,8 @@ def _enable_diagnostics(app):
                       flush=True)
         except Exception as exc:  # diagnostics must never break the app
             print(f"{tag} error while dumping state: {exc!r}", flush=True)
+        if state["round"] == 3 and os.environ.get("PDFARRANGER_MACOS_DROP_SELFTEST"):
+            _simulate_internal_drop(app)
         if state["round"] >= 8:
             faulthandler.cancel_dump_traceback_later()
         return state["round"] < 8

@@ -48,7 +48,7 @@ cat "$CONFIG_DIR/config.ini"
 
 echo "== smoke: launching the app with the test document =="
 env -u DYLD_LIBRARY_PATH -u GI_TYPELIB_PATH -u GSETTINGS_SCHEMA_DIR -u GTK_PATH -u XDG_DATA_DIRS \
-    PDFARRANGER_MACOS_DIAG=1 \
+    PDFARRANGER_MACOS_DIAG=1 PDFARRANGER_MACOS_DROP_SELFTEST=1 \
     "$APP/Contents/MacOS/pdfarranger" "$OUT/test.pdf" >"$OUT/app-output.log" 2>&1 &
 APP_PID=$!
 sleep 25
