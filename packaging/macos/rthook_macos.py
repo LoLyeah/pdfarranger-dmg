@@ -57,6 +57,10 @@ def _setup():
     _prepend('DYLD_LIBRARY_PATH', os.path.join(str(runtime), 'lib'))
     _prepend('DYLD_LIBRARY_PATH', str(runtime))
 
+    # Helper executables shipped in the bundle (gsettings, which pdfarranger
+    # probes at startup to check that the schemas are reachable).
+    _prepend('PATH', str(runtime))
+
     # pdfarranger loads libintl.8.dylib through ctypes by its bare file name on
     # macOS. dyld does not search the bundle for such a name, so resolve names
     # that exist inside the bundle to their bundled absolute path.

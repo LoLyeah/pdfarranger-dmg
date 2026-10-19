@@ -102,6 +102,14 @@ for module_dir in ("immodules", "printbackends"):
     for so in sorted((BREW_PREFIX / "lib" / "gtk-3.0" / "3.0.0" / module_dir).glob("*.so")):
         binaries.append((str(so), f"lib/gtk-3.0/3.0.0/{module_dir}"))
 
+# pdfarranger runs `gsettings list-recursively` on macOS at startup to verify
+# that the GSettings schemas are reachable. Bundle the CLI (it is a normal
+# Mach-O executable, so PyInstaller rewrites its library references too) and
+# put the bundle on PATH at runtime.
+gsettings_bin = BREW_PREFIX / "bin" / "gsettings"
+if gsettings_bin.is_file():
+    binaries.append((str(gsettings_bin), "."))
+
 # --- PyInstaller analysis ---------------------------------------------------
 
 a = Analysis(

@@ -77,3 +77,22 @@ cat "$OUT/app-output.log"
 echo "== smoke: warnings/errors =="
 grep -nE "Traceback|Error|ERROR|WARNING|CRITICAL|Gtk-WARNING|glib" "$OUT/app-output.log" | head -40 \
     || echo "none"
+
+echo "== smoke: bundled gsettings sees the schemas =="
+GSL=""
+for candidate in "$APP/Contents/Frameworks/gsettings" "$APP/Contents/Resources/gsettings"; do
+    [ -x "$candidate" ] && GSL="$candidate" && break
+done
+if [ -n "$GSL" ]; then
+    GSETTINGS_SCHEMA_DIR="$APP/Contents/Resources/share/glib-2.0/schemas" \
+        "$GSL" list-recursively 2>&1 | grep -c . | sed 's/^/settings entries: /'
+    GSETTINGS_SCHEMA_DIR="$APP/Contents/Resources/share/glib-2.0/schemas" \
+        "$GSL" list-recursively 2>&1 | grep -m2 "org.gtk.Settings.ColorChooser" \
+        || echo "WARNING: org.gtk.Settings.ColorChooser schema missing"
+else
+    echo "WARNING: gsettings not bundled"
+fi
+
+if grep -q "Found no schema files\|gsettings failed" "$OUT/app-output.log"; then
+    echo "WARNING: the app could not verify the GSettings schemas"
+fi
