@@ -43,6 +43,16 @@ def _enable_diagnostics(app):
             if thread is not None:
                 print(f"{tag}   render thread alive={thread.is_alive()} "
                       f"model_lock={thread.model_lock.locked()}", flush=True)
+            iconview = app.iconview
+            if iconview is not None:
+                print(f"{tag}   iconview visible={iconview.get_visible()} "
+                      f"mapped={iconview.get_mapped()} size={iconview.get_allocated_width()}x"
+                      f"{iconview.get_allocated_height()} model="
+                      f"{iconview.get_model() is model}", flush=True)
+            window = app.window
+            if window is not None:
+                print(f"{tag}   window size={window.get_size()} visible={window.get_visible()}",
+                      flush=True)
         except Exception as exc:  # diagnostics must never break the app
             print(f"{tag} error while dumping state: {exc!r}", flush=True)
         if state["round"] >= 8:

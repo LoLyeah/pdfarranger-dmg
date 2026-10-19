@@ -66,6 +66,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: release/*
+          prerelease: ${{ contains(github.ref_name, '-') }}
           body: |
             **Unofficial macOS build** of PDF Arranger ${{ steps.version.outputs.version }} (Apple Silicon / arm64).
 
