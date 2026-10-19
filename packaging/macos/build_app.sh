@@ -193,8 +193,18 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE"
 ditto --norsrc --noextattr "$APP" "$STAGE/${APP_NAME}.app"
 ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "${APP_NAME} ${VERSION}" -srcfolder "$STAGE" \
-    -ov -format UDZO "$DMG"
+# detach a leftover volume of the same name, and retry: hdiutil create has been
+# seen to fail with "Resource busy" on CI runners
+hdiutil detach "/Volumes/${APP_NAME} ${VERSION}" >/dev/null 2>&1 || true
+for attempt in 1 2 3; do
+    if hdiutil create -volname "${APP_NAME} ${VERSION}" -srcfolder "$STAGE" \
+        -ov -format UDZO "$DMG"; then
+        break
+    fi
+    echo "WARNING: hdiutil create failed (attempt $attempt), retrying in 10s"
+    sleep 10
+done
+test -f "$DMG" || { echo "ERROR: $DMG was not created"; exit 1; }
 
 step "Create zip"
 ditto -c -k --keepParent --norsrc --noextattr "$APP" "$ZIP"

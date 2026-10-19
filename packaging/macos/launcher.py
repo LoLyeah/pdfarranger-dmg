@@ -40,8 +40,19 @@ def _simulate_internal_drop(app):
         def get_selected_action():
             return Gdk.DragAction.MOVE
 
+    class _SelectionData:
+        """Stands in for the GtkSelectionData of a drag that lost its payload."""
+
+        @staticmethod
+        def get_data():
+            return None
+
+        @staticmethod
+        def get_target():
+            return None
+
     try:
-        app.iv_dnd_received_data(app.iconview, _Context(), 0, 0, Gtk.SelectionData(), 0, 0)
+        app.iv_dnd_received_data(app.iconview, _Context(), 0, 0, _SelectionData(), 0, 0)
     except Exception as exc:  # a crash here is what we are testing for
         print(f"DIAG selftest: ERROR {exc!r}", flush=True)
     print(f"DIAG selftest before={before}", flush=True)
