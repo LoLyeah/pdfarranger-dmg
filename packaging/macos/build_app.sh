@@ -121,6 +121,12 @@ if [ -d "$APP/Contents/Frameworks/share/locale" ]; then
 fi
 ls -la "$APP/Contents/MacOS/share/"
 
+# pdfarranger loads libintl through ctypes by its bare file name on macOS;
+# a link next to the executable puts it on the loader's search path.
+if [ -f "$APP/Contents/Frameworks/libintl.8.dylib" ]; then
+    ln -sf ../Frameworks/libintl.8.dylib "$APP/Contents/MacOS/libintl.8.dylib"
+fi
+
 step "Verify bundle layout and library references"
 "$PYTHON" packaging/macos/verify_bundle.py "$APP"
 

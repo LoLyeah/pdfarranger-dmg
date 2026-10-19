@@ -15,9 +15,9 @@ Everything runs in GitHub Actions: [`.github/workflows/macos-release.yml`](../..
 | File | Purpose |
 | --- | --- |
 | `build_app.sh` | The whole build: translations, icon, PyInstaller, post-processing, ad-hoc signature, smoke test, dmg + zip. Run it locally with `bash packaging/macos/build_app.sh`. |
-| `pdfarranger-macos.spec` | PyInstaller spec: entry point, data files, GTK3 runtime data from Homebrew, the `.app` bundle (Info.plist, icon). |
+| `pdfarranger-macos.spec` | PyInstaller spec: entry point, data files, GTK3 runtime data from Homebrew, the Poppler typelib/libraries, and the `.app` bundle (Info.plist, icon). |
 | `rthook_macos.py` | Runtime hook: points GTK at the schemas / icon themes / fontconfig / GTK modules inside the bundle instead of the Homebrew prefix. |
-| `hooks/hook-gi.repository.Poppler.py` | PyInstaller has no hook for the Poppler typelib (used to render PDF pages), so this one collects it. |
+| `verify_bundle.py` | Fails the build if a bundled Mach-O links outside the bundle or a required typelib/data file is missing. |
 | `launcher.py` | Plain top-level entry script for PyInstaller. |
 
 The GTK3 libraries come from Homebrew **at build time**: PyInstaller rewrites

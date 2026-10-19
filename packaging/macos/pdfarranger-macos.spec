@@ -11,6 +11,8 @@ import os
 import re
 from pathlib import Path
 
+from PyInstaller.utils.hooks.gi import GiModuleInfo
+
 SPEC_DIR = Path(SPECPATH).resolve()  # noqa: F821 - provided by PyInstaller
 ROOT = SPEC_DIR.parent.parent
 BREW_PREFIX = Path(os.environ.get("BREW_PREFIX") or "/opt/homebrew")
@@ -26,6 +28,33 @@ VERSION = re.search(
 
 datas = []
 binaries = []
+hiddenimports = [
+    "gi.repository.Gtk",
+    "gi.repository.Gdk",
+    "gi.repository.GdkPixbuf",
+    "gi.repository.Gio",
+    "gi.repository.GLib",
+    "gi.repository.GObject",
+    "gi.repository.Pango",
+    "gi.repository.PangoCairo",
+    "gi.repository.cairo",
+    "pikepdf",
+    "img2pdf",
+    "dateutil",
+]
+
+# PyInstaller ships no GI hook for Poppler and does not pick
+# ``gi.repository.Poppler`` up from the source (gi imports it lazily), so its
+# typelib and shared libraries have to be collected explicitly.
+poppler = GiModuleInfo("Poppler", "0.18")
+if not poppler.available:
+    raise SystemExit(
+        "Poppler GIRepository module not found - install poppler (brew install poppler)"
+    )
+poppler_binaries, poppler_datas, poppler_hiddenimports = poppler.collect_typelib_data()
+binaries += poppler_binaries
+datas += poppler_datas
+hiddenimports += poppler_hiddenimports
 
 
 def add_tree(src, dest):
@@ -80,22 +109,7 @@ a = Analysis(
     pathex=[str(ROOT)],
     binaries=binaries,
     datas=datas,
-    hiddenimports=[
-        "gi.repository.Gtk",
-        "gi.repository.Gdk",
-        "gi.repository.GdkPixbuf",
-        "gi.repository.Gio",
-        "gi.repository.GLib",
-        "gi.repository.GObject",
-        "gi.repository.Pango",
-        "gi.repository.PangoCairo",
-        "gi.repository.cairo",
-        "gi.repository.Poppler",
-        "pikepdf",
-        "img2pdf",
-        "dateutil",
-    ],
-    hookspath=[str(SPEC_DIR / "hooks")],
+    hiddenimports=hiddenimports,
     hooksconfig={
         "gi": {
             "module-versions": {
