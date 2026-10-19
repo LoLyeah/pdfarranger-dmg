@@ -148,6 +148,9 @@ step "Ad-hoc code signature (required to run on Apple Silicon)"
 codesign --force --deep --sign - "$APP"
 codesign --verify --deep --verbose=2 "$APP"
 
+step "Strip extended attributes (keeps AppleDouble files out of the artifacts)"
+xattr -cr "$APP" || true
+
 step "Smoke test: run the frozen app"
 APP_BIN="$APP/Contents/MacOS/pdfarranger"
 SMOKE_OUT="$(mktemp)"
@@ -191,13 +194,29 @@ step "Create dmg"
 STAGE="build/macos/dmg"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
-ditto "$APP" "$STAGE/${APP_NAME}.app"
+ditto --norsrc --noextattr "$APP" "$STAGE/${APP_NAME}.app"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -volname "${APP_NAME} ${VERSION}" -srcfolder "$STAGE" \
     -ov -format UDZO "$DMG"
 
 step "Create zip"
-ditto -c -k --keepParent "$APP" "$ZIP"
+ditto -c -k --keepParent --norsrc --noextattr "$APP" "$ZIP"
+
+step "Verify the dmg end-to-end"
+MOUNT_POINT="$(mktemp -d)"
+hdiutil attach "$DMG" -mountpoint "$MOUNT_POINT" -nobrowse -quiet
+codesign --verify --deep --strict "$MOUNT_POINT/${APP_NAME}.app"
+test -x "$MOUNT_POINT/${APP_NAME}.app/Contents/MacOS/pdfarranger"
+if find "$MOUNT_POINT" -name '._*' | grep -q .; then
+    echo "ERROR: AppleDouble files inside the dmg"
+    find "$MOUNT_POINT" -name '._*' | head -10
+    hdiutil detach "$MOUNT_POINT" -quiet || hdiutil detach "$MOUNT_POINT" -force -quiet
+    exit 1
+fi
+"$MOUNT_POINT/${APP_NAME}.app/Contents/MacOS/pdfarranger" --version | head -3
+hdiutil detach "$MOUNT_POINT" -quiet || hdiutil detach "$MOUNT_POINT" -force -quiet
+rmdir "$MOUNT_POINT"
+echo "dmg mounted, app inside is signed and starts"
 
 step "Checksums and result"
 ( cd "$DIST_RELEASE" && shasum -a 256 ./*.dmg ./*.zip > SHA256SUMS && cat SHA256SUMS )
