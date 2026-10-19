@@ -3,8 +3,62 @@
 
 PyInstaller needs a plain top-level script as its entry point (a package
 ``__main__.py`` would break the relative imports).
+
+Set ``PDFARRANGER_MACOS_DIAG=1`` to dump application state (document queue,
+page model, thumbnails) and thread stacks every 5 s - used by the CI smoke
+test to diagnose rendering problems on macOS.
 """
 
-from pdfarranger.pdfarranger import main
+import os
+import sys
+
+
+def _enable_diagnostics(app):
+    import faulthandler
+
+    from gi.repository import GLib
+
+    faulthandler.enable()
+    faulthandler.dump_traceback_later(20, repeat=True)
+    state = {"round": 0}
+
+    def dump():
+        state["round"] += 1
+        tag = f"DIAG[{state['round']}]"
+        try:
+            pdfqueue = app.pdfqueue or []
+            model = app.model
+            print(f"{tag} pdfqueue={len(pdfqueue)} model={None if model is None else len(model)}",
+                  flush=True)
+            for doc in pdfqueue:
+                print(f"{tag}   doc {doc.basename!r}: n_pages={doc.document.get_n_pages()}",
+                      flush=True)
+            if model is not None:
+                for row in model:
+                    page = row[0]
+                    print(f"{tag}   page: thumbnail={page.thumbnail} "
+                          f"wpx={page.width_in_pixel()} hpx={page.height_in_pixel()} "
+                          f"scale={page.scale} zoom={page.zoom}", flush=True)
+            thread = app.rendering_thread
+            if thread is not None:
+                print(f"{tag}   render thread alive={thread.is_alive()} "
+                      f"model_lock={thread.model_lock.locked()}", flush=True)
+        except Exception as exc:  # diagnostics must never break the app
+            print(f"{tag} error while dumping state: {exc!r}", flush=True)
+        if state["round"] >= 8:
+            faulthandler.cancel_dump_traceback_later()
+        return state["round"] < 8
+
+    GLib.timeout_add(5000, dump)
+
+
+def main():
+    from pdfarranger.pdfarranger import PdfArranger
+
+    app = PdfArranger()
+    if os.environ.get("PDFARRANGER_MACOS_DIAG"):
+        _enable_diagnostics(app)
+    sys.exit(app.run(sys.argv) or 0)
+
 
 main()

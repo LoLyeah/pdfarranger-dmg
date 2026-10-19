@@ -40,11 +40,18 @@ with open(identify, "wb") as handle:
 print("test.pdf written:", identify)
 PYEOF
 
+echo "== smoke: seeding the config (skip the content-loss note dialog) =="
+CONFIG_DIR="$HOME/Library/Preferences/pdfarranger"
+mkdir -p "$CONFIG_DIR"
+printf '%s\n' "[preferences]" "content-loss-warning = false" > "$CONFIG_DIR/config.ini"
+cat "$CONFIG_DIR/config.ini"
+
 echo "== smoke: launching the app with the test document =="
 env -u DYLD_LIBRARY_PATH -u GI_TYPELIB_PATH -u GSETTINGS_SCHEMA_DIR -u GTK_PATH -u XDG_DATA_DIRS \
+    PDFARRANGER_MACOS_DIAG=1 \
     "$APP/Contents/MacOS/pdfarranger" "$OUT/test.pdf" >"$OUT/app-output.log" 2>&1 &
 APP_PID=$!
-sleep 15
+sleep 25
 
 if kill -0 "$APP_PID" 2>/dev/null; then
     echo "app still running after 15s"
