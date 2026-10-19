@@ -184,6 +184,9 @@ echo "--- application output ---"
 cat "$GUI_LOG"
 rm -f "$GUI_LOG"
 
+step "Functional smoke test: open a PDF, dump output and a screenshot"
+bash packaging/macos/smoke_app.sh "$APP" build/smoke || echo "WARNING: smoke test script failed"
+
 step "Create dmg"
 STAGE="build/macos/dmg"
 rm -rf "$STAGE"
