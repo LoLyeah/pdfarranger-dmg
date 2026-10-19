@@ -11,6 +11,16 @@ test to diagnose rendering problems on macOS.
 
 import os
 import sys
+from pathlib import Path
+
+
+def _build_info():
+    """Return the build stamp written by build_app.sh (version/commit/date)."""
+    path = Path(sys.executable).resolve().parent.parent / "Resources" / "build-info.txt"
+    try:
+        return path.read_text(encoding="utf-8").replace("\n", " ").strip()
+    except OSError:
+        return "unknown (no build-info.txt)"
 
 
 def _simulate_internal_drop(app):
@@ -71,6 +81,8 @@ def _enable_diagnostics(app):
     def dump():
         state["round"] += 1
         tag = f"DIAG[{state['round']}]"
+        if state["round"] == 1:
+            print(f"{tag} build: {_build_info()}", flush=True)
         try:
             pdfqueue = app.pdfqueue or []
             model = app.model

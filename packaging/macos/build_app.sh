@@ -138,6 +138,13 @@ find "$APP/Contents" -type f \( -name '*.dylib' -o -name '*.so' -o -name 'pdfarr
     | xargs -0 -I{} sh -c 'otool -l "{}" 2>/dev/null | awk "/LC_BUILD_VERSION/{b=1} b&&/minos/{print \$2; exit}"' \
     | sort -V | uniq -c || true
 
+step "Stamp the bundle with build info"
+GIT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+printf 'version=%s\ncommit=%s\nbuilt=%s\narch=%s\n' \
+    "$VERSION" "$GIT_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$ARCH" \
+    > "$APP/Contents/Resources/build-info.txt"
+cat "$APP/Contents/Resources/build-info.txt"
+
 step "Ad-hoc code signature (required to run on Apple Silicon)"
 codesign --force --deep --sign - "$APP"
 codesign --verify --deep --verbose=2 "$APP"
