@@ -85,7 +85,7 @@ it checks) is described in [packaging/macos/README.md](packaging/macos/README.md
 - Windows installers and portable zip:
   <https://github.com/pdfarranger/pdfarranger/releases>
 - User manual: <https://github.com/pdfarranger/pdfarranger/wiki/User-Manual>
-- Upstream macOS notes (Nix / manual GTK setup): [macOS.md](macOS.md)
+- Running from source on macOS (Nix / manual GTK setup): [macOS.md](macOS.md)
 
 Issues: bundle/packaging problems belong in this repository; bugs in the
 application itself belong upstream (please mention that it came from the macOS
