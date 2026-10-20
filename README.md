@@ -84,6 +84,19 @@ Pushing a `v*` tag makes CI build, verify and publish both assets
 produces the artifacts without a release. How the bundle is assembled (and what
 it checks) is described in [packaging/macos/README.md](packaging/macos/README.md).
 
+## Known issues
+
+- **Transparent strip at the top of the window** (macOS 26/27, cosmetic). GTK3's
+  quartz window chrome does not paint the titlebar/header area fully; the window
+  works normally otherwise. Not fixed here — it needs an upstream GTK fix.
+- **Cross-window drag copies instead of moves.** Deliberate: deleting the source
+  rows is the code path that loses pages on macOS (see above).
+- **Not notarized.** The app is ad-hoc signed, so the first launch needs
+  right-click → **Open** (or `xattr -dr com.apple.quarantine "/Applications/PDF Arranger.app"`).
+- **Apple Silicon only.** No Intel build is produced.
+- pdfarranger upstream is GTK3-only; GTK 3.24.52 is the last GTK3 release, so
+  quartz-specific bugs like the strip above have to be worked around, not fixed.
+
 ## Everything else lives upstream
 
 - **Linux / BSD / Windows / Flathub / Snap / source installs:**
