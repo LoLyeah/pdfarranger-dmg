@@ -9,6 +9,14 @@ name: macOS (dmg + zip)
 
 on:
   workflow_dispatch:
+    inputs:
+      gtk_source:
+        description: 'GTK3: release = Homebrew bottle (default), branch = build gtk-3-24 HEAD from source (experimental)'
+        type: choice
+        default: release
+        options:
+          - release
+          - branch
   push:
     tags:
       - 'v*'
@@ -31,6 +39,10 @@ jobs:
       - name: Install Homebrew dependencies
         run: |
           brew install pkgconf gtk+3 poppler gobject-introspection gettext adwaita-icon-theme librsvg libhandy
+
+      - name: Build GTK3 from the gtk-3-24 branch (experimental)
+        if: inputs.gtk_source == 'branch'
+        run: bash packaging/macos/build_gtk_branch.sh
 
       - name: Set up Python
         uses: actions/setup-python@v7
