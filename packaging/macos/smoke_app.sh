@@ -96,3 +96,15 @@ fi
 if grep -q "Found no schema files\|gsettings failed" "$OUT/app-output.log"; then
     echo "WARNING: the app could not verify the GSettings schemas"
 fi
+
+echo "== smoke: second run with GTK_CSD=0 (native title bar instead of CSD) =="
+env -u DYLD_LIBRARY_PATH -u GI_TYPELIB_PATH -u GSETTINGS_SCHEMA_DIR -u GTK_PATH -u XDG_DATA_DIRS \
+    GTK_CSD=0 \
+    "$APP/Contents/MacOS/pdfarranger" "$OUT/test.pdf" >"$OUT/app-output-csd0.log" 2>&1 &
+CSD_PID=$!
+sleep 12
+screencapture -x "$OUT/screen-csd0.png" >/dev/null 2>&1 || true
+kill "$CSD_PID" 2>/dev/null
+sleep 2
+kill -9 "$CSD_PID" 2>/dev/null
+grep -iE "warning|error|critical" "$OUT/app-output-csd0.log" | head -10 || echo "no warnings with GTK_CSD=0"
