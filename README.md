@@ -46,9 +46,15 @@ runtime — no Homebrew, no Nix, nothing else to install. On top of that:
 
 - **Dragging a page no longer deletes it.** Upstream macOS bug
   [#1334](https://github.com/pdfarranger/pdfarranger/issues/1334): GTK's quartz
-  drag & drop loses the drag payload, after which upstream's source-side delete
-  handler removed the dragged pages. Now a lost drop falls back to the dragged
-  selection and the delete handler is disabled on macOS.
+  drag & drop loses the drag payload, and both of GTK's *own* drag handlers —
+  the source-side `drag-data-delete` and the destination-side
+  `drag-data-received` installed by `enable_model_drag_source/dest` — then act on
+  a move that pdfarranger already performed. Both are now stopped on macOS and
+  the drag is finished with `delete=FALSE`, so only pdfarranger's own move runs.
+  Lost drops fall back to the dragged selection.
+  Trade-off: dragging pages from one PDF Arranger window to another *copies*
+  instead of moves on macOS (deleting the source is exactly the code path that
+  loses pages there). Drag between windows is rare; losing pages is not.
 - **Preferences → Theme works** (libhandy is bundled, so the libhandy header bar
   and the theme selector are available).
 - **GSettings schemas + the `gsettings` CLI are inside the bundle** — no more
