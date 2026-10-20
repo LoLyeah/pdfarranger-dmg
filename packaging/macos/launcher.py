@@ -11,6 +11,7 @@ test to diagnose rendering problems on macOS.
 
 import os
 import sys
+import traceback
 from pathlib import Path
 
 
@@ -87,6 +88,25 @@ def _simulate_internal_drop(app):
     print(f"DIAG selftest sw after ={order()} count={len(model)}", flush=True)
 
 
+def _enable_row_trace(app):
+    """Print a stack trace whenever a row is removed from the page model.
+
+    Any code path - ours or GTK's own drag & drop handlers - that deletes a page
+    leaves a trace in the diagnostic log.
+    """
+    model = app.model
+    if model is None:
+        print("DIAG trace: no model yet, row tracing disabled", flush=True)
+        return
+
+    def on_row_deleted(_model, path):
+        print(f"DIAG row-deleted path={path}", flush=True)
+        traceback.print_stack()
+
+    model.connect("row-deleted", on_row_deleted)
+    print("DIAG trace: connected to model row-deleted", flush=True)
+
+
 def _enable_diagnostics(app):
     import faulthandler
 
@@ -95,6 +115,14 @@ def _enable_diagnostics(app):
     faulthandler.enable()
     faulthandler.dump_traceback_later(20, repeat=True)
     state = {"round": 0}
+
+    def attach_row_trace():
+        if app.model is not None:
+            _enable_row_trace(app)
+            return False
+        return True
+
+    GLib.timeout_add(300, attach_row_trace)
 
     def dump():
         state["round"] += 1

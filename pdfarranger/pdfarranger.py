@@ -86,7 +86,7 @@ else:
     del libintl
 
 APPNAME = 'PDF Arranger'
-VERSION = '1.14.2'
+VERSION = '1.14.3'
 WEBSITE = 'https://github.com/pdfarranger/pdfarranger'
 
 if os.name == 'nt':
@@ -2362,14 +2362,14 @@ class PdfArranger(Gtk.Application):
         if platform.system() == 'Darwin':
             # Workaround for macOS, see
             # https://github.com/pdfarranger/pdfarranger/issues/1334
-            # GTK's quartz drag & drop regularly fails to transfer the drag data
-            # (visible as "Gdk-CRITICAL: gdk_atom_intern: assertion
-            # 'atom_name != NULL' failed") while this handler is still called, so
-            # it would delete the dragged pages although they were never inserted
-            # anywhere. For a drop on the empty area the drag is not even flagged
-            # as internal. Moves inside this window are performed by
-            # iv_dnd_received_data and sw_dnd_received_data, therefore pages are
-            # never deleted here on macOS.
+            # enable_model_drag_source() installs GTK's own "drag-data-delete"
+            # handler, which runs after this one and calls
+            # gtk_tree_drag_source_drag_data_delete() on the Gtk.ListStore - that
+            # REMOVES the dragged row. Returning here alone is therefore not
+            # enough: the emission has to be stopped, otherwise GTK deletes the
+            # page even though nothing was inserted anywhere (and even though a
+            # move inside this window already handled the rows).
+            self.iconview.stop_emission_by_name('drag-data-delete')
             return
         selection = self.iconview.get_selected_items()
         self.undomanager.commit("Move")

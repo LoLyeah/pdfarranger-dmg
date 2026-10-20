@@ -35,8 +35,13 @@ PY
 sed -n '/url "/p;/sha256 "/p' "$TMP/gtk+3.rb" | head -4
 
 echo "=== building GTK3 from source (this takes a while) ==="
+# Homebrew refuses formulae outside a tap, so stage it in a throwaway local tap
+TAP="local/gtk-branch"
+brew tap-new "$TAP" --no-git >/dev/null 2>&1 || true
+TAP_DIR="$(brew --repository "$TAP")"
+cp "$TMP/gtk+3.rb" "$TAP_DIR/Formula/gtk+3.rb"
 brew uninstall --ignore-dependencies gtk+3 >/dev/null 2>&1 || true
-HOMEBREW_NO_AUTO_UPDATE=1 brew install --build-from-source --formula "$TMP/gtk+3.rb"
+HOMEBREW_NO_AUTO_UPDATE=1 brew install --build-from-source "$TAP/gtk+3"
 
 echo "=== installed GTK3 ==="
 pkg-config --modversion gtk+-3.0
