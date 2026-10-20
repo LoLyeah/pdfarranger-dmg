@@ -2310,6 +2310,10 @@ class PdfArranger(Gtk.Application):
             selection = iconview.get_selected_items()
             if selection:
                 self._move_pages([p.get_indices()[0] for p in selection], ref_to, before)
+            # GTK's default destination handler must not process this drop again
+            # (and must not finish it with delete=TRUE).
+            iconview.stop_emission_by_name('drag-data-received')
+            Gtk.drag_finish(context, True, False, etime)
             return
         if not data:
             return
@@ -2691,8 +2695,8 @@ class PdfArranger(Gtk.Application):
             if self.sw.is_sensitive():
                 self.window.lookup_action("paste").set_enabled(text or image)
 
-    def sw_dnd_received_data(self, _scrolledwindow, _context, _x, _y,
-                             selection_data, target_id, _etime):
+    def sw_dnd_received_data(self, _scrolledwindow, context, _x, _y,
+                             selection_data, target_id, etime):
         """Handles received data by drag and drop in scrolledwindow"""
         if self.drag_origin_self and target_id == self.MODEL_ROW_EXTERN:
             # Pages dragged from this window and dropped on the empty area of
@@ -2709,6 +2713,8 @@ class PdfArranger(Gtk.Application):
                         model, Gtk.TreePath.new_from_indices([len(model) - 1]))
                 before = self.drag_pos == Gtk.IconViewDropPosition.DROP_LEFT
                 self._move_pages([p.get_indices()[0] for p in selection], ref_to, before)
+                _scrolledwindow.stop_emission_by_name('drag-data-received')
+                Gtk.drag_finish(context, True, False, etime)
             return
         if target_id == self.TEXT_URI_LIST:
             pageadder = PageAdder(self)
