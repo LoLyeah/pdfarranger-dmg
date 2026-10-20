@@ -86,7 +86,7 @@ else:
     del libintl
 
 APPNAME = 'PDF Arranger'
-VERSION = '1.14.1'
+VERSION = '1.14.2'
 WEBSITE = 'https://github.com/pdfarranger/pdfarranger'
 
 if os.name == 'nt':
@@ -310,6 +310,7 @@ class PdfArranger(Gtk.Application):
         self.export_file = None
         self.drag_path = None
         self.drag_pos = Gtk.IconViewDropPosition.DROP_RIGHT
+        self.drag_origin_self = False
         self.window_width_old = 0
         self.set_iv_visible_id = None
         self.vadj_percent = None
@@ -824,7 +825,7 @@ class PdfArranger(Gtk.Application):
         self.iconview.connect('drag_data_delete', self.iv_dnd_data_delete)
         self.iconview.connect('drag_motion', self.iv_dnd_motion)
         self.iconview.connect('drag_leave', self.iv_dnd_leave_end)
-        self.iconview.connect('drag_end', self.iv_dnd_leave_end)
+        self.iconview.connect('drag_end', self.iv_drag_end)
         self.iconview.connect('button_press_event', self.iv_button_press_event)
         self.iconview.connect('motion_notify_event', self.iv_motion)
         self.iconview.connect('button_release_event', self.iv_button_release_event)
@@ -2219,8 +2220,9 @@ class PdfArranger(Gtk.Application):
         self.iv_selection_changed()
 
     @staticmethod
-    def iv_drag_begin(iconview, context):
+    def iv_drag_begin(self, iconview, context):
         """Sets custom drag icon."""
+        self.drag_origin_self = True
         selected_count = len(iconview.get_selected_items())
         stock_icon = "gtk-dnd-multiple" if selected_count > 1 else "gtk-dnd"
         iconview.stop_emission('drag_begin')
@@ -2256,6 +2258,29 @@ class PdfArranger(Gtk.Application):
         continuous = len(indices) == indices[-1] - indices[0] + 1
         return continuous and indices[0] <= insert_pos <= indices[-1] + 1
 
+    def _move_pages(self, indices, ref_to, before):
+        """Move model rows (by index) to ref_to, keep the moved pages selected."""
+        model = self.model
+        self.undomanager.commit("Move")
+        self.set_unsaved(True)
+        indices = sorted(indices, reverse=not before)
+        ref_from_list = [Gtk.TreeRowReference.new(model, Gtk.TreePath.new_from_indices([p]))
+                         for p in indices]
+        iter_to = model.get_iter(ref_to.get_path())
+        with self.render_lock():
+            for ref_from in ref_from_list:
+                iterator = model.get_iter(ref_from.get_path())
+                page = model.get_value(iterator, 0).duplicate()
+                if before:
+                    it = model.insert_before(iter_to, [page, page.description])
+                else:
+                    it = model.insert_after(iter_to, [page, page.description])
+                self.iconview.select_path(model.get_path(it))
+            for ref_from in ref_from_list:
+                model.remove(model.get_iter(ref_from.get_path()))
+        self.iv_selection_changed()
+        GObject.idle_add(self.render)
+
     def iv_dnd_received_data(self, iconview, context, _x, _y,
                              selection_data, _target_id, etime):
         """Handles received data by drag and drop in iconview"""
@@ -2267,21 +2292,6 @@ class PdfArranger(Gtk.Application):
             target_name = target.name() if target is not None else None
         except (TypeError, AttributeError):
             target_name = None
-        if not data and target_name is None and self.drag_path is not None:
-            # Workaround for macOS, see
-            # https://github.com/pdfarranger/pdfarranger/issues/1334
-            # GTK's quartz drag & drop can lose the target and the data of an
-            # internal drag (Gdk-CRITICAL: gdk_atom_intern: assertion
-            # 'atom_name != NULL' failed). The pages that were dragged are still
-            # the iconview selection, so use it for the move.
-            selection = iconview.get_selected_items()
-            if selection:
-                data = '\n;\n'.join(str(p.get_indices()[0]) for p in selection).encode()
-                target_name = 'MODEL_ROW_INTERN'
-        if not data:
-            return
-        load_password = (len(self.pdfqueue) == 0) and self.password is None
-        data = data.decode().split('\n;\n')
         if self.drag_path and len(model) > 0:
             ref_to = Gtk.TreeRowReference.new(model, self.drag_path)
         else:
@@ -2290,6 +2300,21 @@ class PdfArranger(Gtk.Application):
             before = self.drag_pos == Gtk.IconViewDropPosition.DROP_LEFT
         else:
             before = self.drag_pos == Gtk.IconViewDropPosition.DROP_RIGHT
+        if not data and target_name is None and ref_to is not None:
+            # Workaround for macOS, see
+            # https://github.com/pdfarranger/pdfarranger/issues/1334
+            # GTK's quartz drag & drop can lose the target and the data of an
+            # internal drag (Gdk-CRITICAL: gdk_atom_intern: assertion
+            # 'atom_name != NULL' failed). The pages that were dragged are still
+            # the iconview selection, so move them explicitly.
+            selection = iconview.get_selected_items()
+            if selection:
+                self._move_pages([p.get_indices()[0] for p in selection], ref_to, before)
+            return
+        if not data:
+            return
+        load_password = (len(self.pdfqueue) == 0) and self.password is None
+        data = data.decode().split('\n;\n')
         target = target_name
         if target == 'MODEL_ROW_INTERN':
             move = context.get_selected_action() & Gdk.DragAction.MOVE
@@ -2334,16 +2359,17 @@ class PdfArranger(Gtk.Application):
             # On Windows this method is in some situations triggered even for drag & drop
             # within the same pdfarranger instance
             return
-        if self.target_is_intern and platform.system() == 'Darwin':
+        if platform.system() == 'Darwin':
             # Workaround for macOS, see
             # https://github.com/pdfarranger/pdfarranger/issues/1334
-            # GTK's quartz drag & drop regularly fails to transfer the data of
-            # the custom drag targets (visible as
-            # "Gdk-CRITICAL: gdk_atom_intern: assertion 'atom_name != NULL' failed")
-            # and this method then deletes the dragged pages even though they
-            # were never inserted anywhere. Internal moves remove their source
-            # pages in iv_dnd_received_data, so refusing to delete here can only
-            # avoid data loss.
+            # GTK's quartz drag & drop regularly fails to transfer the drag data
+            # (visible as "Gdk-CRITICAL: gdk_atom_intern: assertion
+            # 'atom_name != NULL' failed") while this handler is still called, so
+            # it would delete the dragged pages although they were never inserted
+            # anywhere. For a drop on the empty area the drag is not even flagged
+            # as internal. Moves inside this window are performed by
+            # iv_dnd_received_data and sw_dnd_received_data, therefore pages are
+            # never deleted here on macOS.
             return
         selection = self.iconview.get_selected_items()
         self.undomanager.commit("Move")
@@ -2436,6 +2462,11 @@ class PdfArranger(Gtk.Application):
         elif self.iv_auto_scroll_timer:
             GObject.source_remove(self.iv_auto_scroll_timer)
             self.iv_auto_scroll_timer = None
+
+    def iv_drag_end(self, widget, context):
+        """Ends a drag that was started in this window."""
+        self.drag_origin_self = False
+        self.iv_dnd_leave_end(widget, context)
 
     def iv_dnd_leave_end(self, _widget, _context, _ignored=None):
         """Ends the auto-scroll during DND"""
@@ -2653,6 +2684,22 @@ class PdfArranger(Gtk.Application):
     def sw_dnd_received_data(self, _scrolledwindow, _context, _x, _y,
                              selection_data, target_id, _etime):
         """Handles received data by drag and drop in scrolledwindow"""
+        if self.drag_origin_self and target_id == self.MODEL_ROW_EXTERN:
+            # Pages dragged from this window and dropped on the empty area of
+            # the scrolled window: an internal move. GTK's quartz drag & drop may
+            # lose the drag data on macOS (see issue #1334), so move the selected
+            # pages explicitly instead of relying on the drag payload.
+            model = self.iconview.get_model()
+            selection = self.iconview.get_selected_items()
+            if selection and len(model) > 0:
+                if self.drag_path:
+                    ref_to = Gtk.TreeRowReference.new(model, self.drag_path)
+                else:
+                    ref_to = Gtk.TreeRowReference.new(
+                        model, Gtk.TreePath.new_from_indices([len(model) - 1]))
+                before = self.drag_pos == Gtk.IconViewDropPosition.DROP_LEFT
+                self._move_pages([p.get_indices()[0] for p in selection], ref_to, before)
+            return
         if target_id == self.TEXT_URI_LIST:
             pageadder = PageAdder(self)
             load_password = (len(self.pdfqueue) == 0) and self.password is None

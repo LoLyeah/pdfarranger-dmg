@@ -68,6 +68,24 @@ def _simulate_internal_drop(app):
     print(f"DIAG selftest before={before}", flush=True)
     print(f"DIAG selftest after ={order()}", flush=True)
 
+    # Second scenario: pages dropped on the empty area of the scrolled window
+    # (MODEL_ROW_EXTERN target). This is the path that deleted pages on macOS.
+    count_before = len(model)
+    before_sw = order()
+    app.iconview.select_path(Gtk.TreePath.new_from_indices([1]))
+    app.drag_origin_self = True
+    app.drag_path = Gtk.TreePath.new_from_indices([0])
+    app.drag_pos = Gtk.IconViewDropPosition.DROP_LEFT
+    try:
+        app.sw_dnd_received_data(app.sw, None, 0, 0, _SelectionData(),
+                                 app.MODEL_ROW_EXTERN, 0)
+    except Exception as exc:
+        print(f"DIAG selftest: ERROR(sw) {exc!r}", flush=True)
+    finally:
+        app.drag_origin_self = False
+    print(f"DIAG selftest sw before={before_sw} count={count_before}", flush=True)
+    print(f"DIAG selftest sw after ={order()} count={len(model)}", flush=True)
+
 
 def _enable_diagnostics(app):
     import faulthandler
