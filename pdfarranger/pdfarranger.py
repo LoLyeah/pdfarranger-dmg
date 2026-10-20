@@ -86,7 +86,7 @@ else:
     del libintl
 
 APPNAME = 'PDF Arranger'
-VERSION = '1.14.3'
+VERSION = '1.14.4'
 WEBSITE = 'https://github.com/pdfarranger/pdfarranger'
 
 if os.name == 'nt':
@@ -2341,6 +2341,16 @@ class PdfArranger(Gtk.Application):
                         model.remove(model.get_iter(ref_from.get_path()))
             self.iv_selection_changed()
             GObject.idle_add(self.render)
+            if platform.system() == 'Darwin':
+                # GTK's own destination handler (installed by
+                # enable_model_drag_dest) would run after this one and process
+                # the drop a second time; for a MOVE action it also finishes the
+                # drag with delete=TRUE, which lets GTK's source-side handler
+                # remove rows at now-shifted indices. Stop that default handler
+                # and finish the drag here without deletion - the move above has
+                # already done the work.
+                iconview.stop_emission_by_name('drag-data-received')
+                Gtk.drag_finish(context, True, False, etime)
 
         elif target == 'MODEL_ROW_EXTERN':
             data = self.deserialize(data)

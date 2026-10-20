@@ -1,4 +1,4 @@
-VERSION='1.14.3'
+VERSION='1.14.4'
 
 from cx_Freeze import setup, Executable
 import os
