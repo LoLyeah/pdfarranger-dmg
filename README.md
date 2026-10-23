@@ -6,6 +6,10 @@ This is a **macOS packaging fork** of [PDF Arranger](https://github.com/pdfarran
 it builds a self-contained `PDF Arranger.app` (Apple Silicon), wraps it into a
 `.dmg` and a `.zip`, and ships a handful of macOS fixes on top of upstream.
 
+*This is personal fork, I just want to use this app without the annoying drag and drops bug, with easy to install dmg files.*
+*It'll not be maintained. I'll only update if there's issues with future MacOS version. Just use the upstream instead.*
+And this is why I didn't contribute to upstream because I vibe-coded the fix.
+
 **It is not a general fork.** For Linux, Windows, BSD, Flathub, Snap or source
 installs, use upstream — <https://github.com/pdfarranger/pdfarranger>.
 
